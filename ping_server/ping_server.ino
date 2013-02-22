@@ -19,12 +19,11 @@
 #include <MirfHardwareSpiDriver.h>
 
 void setup(){
-//  Serial.begin(9600);
+  Serial.begin(9600);
+  
   /*
    * Set the SPI Driver.
    */
-  Mirf.cePin = 9;
-  Mirf.csnPin = 10;
 
   Mirf.spi = &MirfHardwareSpi;
   
@@ -32,6 +31,8 @@ void setup(){
    * Setup pins / SPI.
    */
    
+  Mirf.cePin = 9;
+  Mirf.csnPin = 10;
   Mirf.init();
   
   /*
@@ -47,14 +48,21 @@ void setup(){
    * NB: payload on client and server must be the same.
    */
    
-//  Mirf.payload = sizeof(unsigned long);
-  Mirf.payload = 1;
-  Mirf.channel = 90; // Just because   
+  Mirf.payload =1;// sizeof(unsigned long);
+  
+  /*
+   * Write channel and payload config then power up reciver.
+   */
+   
   Mirf.config();
   
+  Serial.println("Listening..."); 
 }
 
 void loop(){
+  /*
+   * A buffer to store the data.
+   */
    
   byte data[Mirf.payload];
   
@@ -66,27 +74,28 @@ void loop(){
    */
    
   if(!Mirf.isSending() && Mirf.dataReady()){
+    Serial.println("Got packet");
     
     /*
      * Get load the packet into the buffer.
      */
-    char c;
-    Mirf.getData((byte *) &c);
-//    Serial.print("gotten data is:");
-//    Serial.println(c);
+     
+    Mirf.getData(data);
+    
+    Serial.println((char) data[0]);
     
     /*
      * Set the send address.
      */
      
      
-    Mirf.setTADDR((byte *)"clie1");
+    //Mirf.setTADDR((byte *)"clie1");
     
     /*
      * Send the data back to the client.
      */
      
-    Mirf.send((byte *) &c);
+    //Mirf.send(data);
     
     /*
      * Wait untill sending has finished
@@ -94,5 +103,6 @@ void loop(){
      * NB: isSending returns the chip to receving after returning true.
      */
       
+    Serial.println("Reply sent.");
   }
 }

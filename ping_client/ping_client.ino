@@ -32,16 +32,18 @@ void setup(){
    * Mirf.csnPin = 9;
    * Mirf.cePin = 7;
    */
+  /*
+  */
+  Mirf.spi = &MirfHardwareSpi;
   Mirf.cePin = 6;
   Mirf.csnPin = 9;
-  Mirf.spi = &MirfHardwareSpi;
   Mirf.init();
   
   /*
    * Configure reciving address.
    */
    
-  Mirf.setRADDR((byte *)"clie1");
+  Mirf.setRADDR((byte *) "clie1");
   
   /*
    * Set the payload length to sizeof(unsigned long) the
@@ -50,7 +52,7 @@ void setup(){
    * NB: payload on client and server must be the same.
    */
    
-  Mirf.payload = 1;
+  Mirf.payload = sizeof(unsigned long);
   
   /*
    * Write channel and payload config then power up reciver.
@@ -58,45 +60,42 @@ void setup(){
    
   /*
    * To change channel:
+   * 
+   * Mirf.channel = 10;
+   *
    * NB: Make sure channel is legal in your area.
    */
    
-  Mirf.channel = 90; // Just because
   Mirf.config();
   
   Serial.println("Beginning ... "); 
 }
 
 void loop(){
-  char incomingByte;
-    
-  // send data only when you receive data:
-  if (Serial.available() > 0) {
-      unsigned long time = millis();
-      // read the incoming byte:
-      incomingByte = Serial.read();
-    
-      // say what you got:
-      Serial.print("Typed: ");
-      Serial.print(incomingByte);
-      Mirf.setTADDR((byte *)"serv1");
-      Mirf.send((byte *) &incomingByte);
-      
-      while(Mirf.isSending()); // Wait for it to finish sending
-      Serial.print(" Finished sending ");
-//      delay(10);
-      while(!Mirf.dataReady()){
-        //Serial.println("Waiting");
-        if ( ( millis() - time ) > 1000 ) {
-          Serial.println("Timeout on response from server!");
-          return;
-        }
-      }
-      char c;
-      Mirf.getData((byte *) &c);
-      Serial.print("gotten data is:");
-      Serial.println(c);
+  unsigned long time = millis();
+  
+  Mirf.setTADDR((byte *) "serv1");
+  
+  Mirf.send((byte *)&time);
+  
+  while(Mirf.isSending()){
   }
+  Serial.println("Finished sending");
+  delay(10);
+  while(!Mirf.dataReady()){
+    //Serial.println("Waiting");
+    if ( ( millis() - time ) > 1000 ) {
+      Serial.println("Timeout on response from server!");
+      return;
+    }
+  }
+  
+  Mirf.getData((byte *) &time);
+  
+  Serial.print("Ping: ");
+  Serial.println((millis() - time));
+  
+  delay(1000);
 } 
   
   

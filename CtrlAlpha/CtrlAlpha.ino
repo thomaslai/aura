@@ -1,4 +1,4 @@
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <avr/interrupt.h>
 #include <SPI.h>
 #include <Mirf.h>
@@ -6,9 +6,9 @@
 #include <MirfHardwareSpiDriver.h>
 
 
-SoftwareSerial Soft_Serial(11, 12); // RX, TX
+//SoftwareSerial Soft_Serial(11, 12); // RX, TX
 const int BAUDRATE = 9600;
-const int DELAYVAL = 50;
+const int DELAYVAL = 100;
 const int FEEDBACK_COUNTER_LOOPS = 100; // 1 second in milliseconds
 
 // constants won't change. They're used here to 
@@ -16,13 +16,20 @@ const int FEEDBACK_COUNTER_LOOPS = 100; // 1 second in milliseconds
 const int BRAKE_PIN = 2;
 const int LEFT_PIN = 7;     // the number of the pushbutton pin
 const int RIGHT_PIN = 8;
-const int CANCEL_PIN = 10; // signal cancelling (left and right)
+const int CANCEL_PIN = 14; // signal cancelling (Analog pin 0)
 
 // LED Output pins
 const int BRAKE_CHECK_LED = 3;
 const int LEFT_CHECK_LED = 4;
 const int RIGHT_CHECK_LED = 5;
 const int ON_BOARD_LED = 13;
+
+// Mirf Stuff
+const int CE_PIN = 6;
+const int CSN_PIN = 9;
+const char R_ADDR[6] = "clie1";
+const char T_ADDR[6] = "serv1";
+const int MIRF_PAYLOAD_SIZE = 1;
 
 // Soft Serial Char Mapping
 const char BRAKE_RISE_CHAR = 'B';
@@ -73,19 +80,32 @@ char right_is_on = RIGHT_OFF_CHAR;
 // SETUP  SETUP  SETUP  SETUP  SETUP  SETUP  SETUP //
 /////////////////////////////////////////////////////
 void setup() {
-//  Serial.begin(BAUDRATE);
-//  Serial.println("AURA ACTIVATED");
-  Soft_Serial.begin(BAUDRATE);
+  Serial.begin(BAUDRATE);
+  Serial.println("AURA ACTIVATING...");
+//  Soft_Serial.begin(BAUDRATE);
   
   // Initializing pin ios
   pinMode(LEFT_PIN, INPUT);
   pinMode(RIGHT_PIN, INPUT);
   pinMode(BRAKE_PIN, INPUT);
   pinMode(CANCEL_PIN, INPUT);
+  digitalWrite(CANCEL_PIN, HIGH); // Pulled high so low = signal
   
   pinMode(LEFT_CHECK_LED, OUTPUT);
   pinMode(RIGHT_CHECK_LED, OUTPUT);
   pinMode(BRAKE_CHECK_LED, OUTPUT);
+
+  // Setup Mirf
+  Mirf.spi = &MirfHardwareSpi;
+  Mirf.cePin = CE_PIN;
+  Mirf.csnPin = CSN_PIN;
+  Mirf.init();
+  Mirf.setRADDR((byte *) R_ADDR);
+  Mirf.setTADDR((byte *) T_ADDR);
+  Mirf.payload = MIRF_PAYLOAD_SIZE; // Size of payload
+  Mirf.config();
+  
+  Serial.println("AURA ACTIVATED");
 } // end setup
 
 ////////////////////////////////////////////////////
@@ -108,13 +128,22 @@ void loop(){
   // Brake states check and serial send
   if( brake_state == 1 ){
     brake_is_on = BRAKE_ON_CHAR;
-    Soft_Serial.write(BRAKE_RISE_CHAR);
+    Serial.println("Brake is on");
+//    Soft_Serial.write(BRAKE_RISE_CHAR);
+    Mirf.send((byte*) &BRAKE_RISE_CHAR);
+    while(Mirf.isSending());
+    Serial.println("Send complete, turn on brake lights");
     digitalWrite( ON_BOARD_LED, HIGH);
     analogWrite( BRAKE_CHECK_LED, BRAKE_LED_FULL);
     delay(DELAYVAL);
-  }  else if ( brake_state == -1 ){
+  }  
+  else if ( brake_state == -1 ){
     brake_is_on = BRAKE_OFF_CHAR;
-    Soft_Serial.write(BRAKE_FALL_CHAR);
+    Serial.println("Brake is off");
+//    Soft_Serial.write(BRAKE_FALL_CHAR);
+    Mirf.send((byte*) &BRAKE_FALL_CHAR);
+    while(Mirf.isSending());
+    Serial.println("Send complete, turn off brake lights");
     digitalWrite(ON_BOARD_LED,LOW);
     analogWrite( BRAKE_CHECK_LED, BRAKE_LED_IDLE);
     delay(DELAYVAL);
@@ -124,21 +153,35 @@ void loop(){
   if( left_state == 1 ){
     left_is_on = LEFT_ON_CHAR;
     right_is_on = RIGHT_OFF_CHAR;
-    Soft_Serial.write(LEFT_RISE_CHAR);
+    Serial.println("Left is on");
+//    Soft_Serial.write(LEFT_RISE_CHAR);
+    Mirf.send((byte*) &LEFT_RISE_CHAR);
+    while(Mirf.isSending());
+    Serial.println("Char sent. Turning left on");
     digitalWrite(LEFT_CHECK_LED,HIGH);
     digitalWrite(RIGHT_CHECK_LED,LOW);
     delay(DELAYVAL);
-  }  else if ( right_state == 1 ){
+  }  
+  else if ( right_state == 1 ){
     left_is_on = LEFT_OFF_CHAR;
     right_is_on = RIGHT_ON_CHAR;
-    Soft_Serial.write(RIGHT_RISE_CHAR);
+    Serial.println("Right is on");
+//    Soft_Serial.write(RIGHT_RISE_CHAR);
+    Mirf.send((byte*) &RIGHT_RISE_CHAR);
+    while(Mirf.isSending());
+    Serial.println("Char sent. Turning right on");
     digitalWrite(LEFT_CHECK_LED,LOW);
     digitalWrite(RIGHT_CHECK_LED,HIGH);
     delay(DELAYVAL);
-  }  else if ( cancel_state == 1 ){
+  }  
+  else if ( cancel_state == -1 ){
     left_is_on = LEFT_OFF_CHAR;
     right_is_on = RIGHT_OFF_CHAR;
-    Soft_Serial.write(SIGNAL_CANCEL_CHAR);
+    Serial.println("Cancel is on");
+//    Soft_Serial.write(SIGNAL_CANCEL_CHAR);
+    Mirf.send((byte*) &SIGNAL_CANCEL_CHAR);
+    while(Mirf.isSending());
+    Serial.println("Char sent. Turning off turn lights");
     digitalWrite(LEFT_CHECK_LED,LOW);
     digitalWrite(RIGHT_CHECK_LED,LOW);
     delay(DELAYVAL);
@@ -169,7 +212,7 @@ int edgeDetector(int old_value, int new_value){
     return 0;
   }
 } // end edgeDetector
-
+/*
 void checkFeedback(){
   char brake_feedback;
   char left_feedback;
@@ -200,4 +243,5 @@ void checkFeedback(){
     Soft_Serial.write(right_is_on);
   }
   
-}
+} // End checkFeedback
+*/
