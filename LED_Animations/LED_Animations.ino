@@ -72,16 +72,6 @@ void loadRightToQueue(){
   // Clear queue
   flushDisplayQueue();
   
-  // Slide 1
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
-  display_queue.push(B00111100);
-  display_queue.push(B00111100);
-  display_queue.push(B00011000);  
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  
   // Slide 2
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -114,7 +104,7 @@ void loadRightToQueue(){
   
   // Slide 5
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -124,13 +114,43 @@ void loadRightToQueue(){
   
   // Slide 6
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
+  
+  // Slide 6
+  display_queue.push((byte)0);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  
+  // Slide 0
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);  
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  
+  // Slide 1
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);  
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
 }
 
 void loadLeftToQueue(){
@@ -138,16 +158,6 @@ void loadLeftToQueue(){
   // Clear queue
   flushDisplayQueue();
   
-  // Slide 1
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
-  display_queue.push(B00111100);
-  display_queue.push(B00111100);
-  display_queue.push(B00011000);  
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  
   // Slide 2
   display_queue.push((byte)0);
   display_queue.push(B00011000);
@@ -175,7 +185,7 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   display_queue.push((byte)0);
   
   // Slide 5
@@ -184,8 +194,8 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
   display_queue.push((byte)0);
   
   // Slide 6
@@ -193,8 +203,28 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push((byte)0);
+  
+  // Slide 0
   display_queue.push((byte)0);
   display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);  
+  display_queue.push((byte)0);
+  
+  // Slide 1
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);  
   display_queue.push((byte)0);
   display_queue.push((byte)0);
 }
@@ -208,7 +238,7 @@ void signalStateMachine(){
     char input = Serial.read();
     switch(input) {
       case 'B':
-        brake_modifier = B11111111;
+        brake_modifier = B10000001;
         break;
       case 'b':
         brake_modifier = B00000000;
