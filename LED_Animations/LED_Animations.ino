@@ -13,7 +13,7 @@ LedControl lc=LedControl(4,2,3,1);
 
 /* we always wait a bit between updates of the display */
 unsigned long delaytime=100;
-const int DELAYVAL = 100;
+const int DELAYVAL = 42;
 
 // State machine
 enum SignalState {IDLE, LEFT, RIGHT};
@@ -21,6 +21,8 @@ SignalState current_state = IDLE;
 
 // Global LED Modifiers
 byte brake_modifier = B00000000;
+const byte BRAKE_ON_MODIFIER = B11111111;
+const byte BRAKE_OFF_MODIFIER = B00000000;
 int phase_number = 0;
 QueueList <byte> display_queue;
 
@@ -72,17 +74,28 @@ void loadRightToQueue(){
   // Clear queue
   flushDisplayQueue();
   
+  // Slide 1
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);  
+  display_queue.push((byte)0);
+  
   // Slide 2
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
+  display_queue.push((byte)0);
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
-  display_queue.push(B00011000);  
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   
   // Slide 3
+  display_queue.push(B00011000);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -90,30 +103,19 @@ void loadRightToQueue(){
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
-  display_queue.push(B00011000);
   
   // Slide 4
-  display_queue.push((byte)0);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
-  display_queue.push(B00111100);
   display_queue.push(B00111100);
   
   // Slide 5
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
   display_queue.push(B00111100);
-  
-  // Slide 6
-  display_queue.push((byte)0);
   display_queue.push(B00111100);
   display_queue.push(B00011000);
   display_queue.push((byte)0);
@@ -123,7 +125,7 @@ void loadRightToQueue(){
   display_queue.push(B00011000);
   
   // Slide 6
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);
@@ -132,7 +134,7 @@ void loadRightToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   
-  // Slide 0
+  // Slide 7
   display_queue.push((byte)0);
   display_queue.push(B00011000);
   display_queue.push(B00111100);
@@ -142,7 +144,7 @@ void loadRightToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   
-  // Slide 1
+  // Slide 8
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
@@ -158,18 +160,27 @@ void loadLeftToQueue(){
   // Clear queue
   flushDisplayQueue();
   
-  // Slide 2
+  // Slide 1
   display_queue.push((byte)0);
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);  
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  
+  // Slide 2
+  display_queue.push(B00011000);
+  display_queue.push(B00111100);
+  display_queue.push(B00111100);
+  display_queue.push(B00011000);
+  display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   
   // Slide 3
-  display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);
@@ -177,38 +188,39 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
+  display_queue.push(B00011000);
   
   // Slide 4
   display_queue.push(B00111100);
+  display_queue.push(B00011000);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   display_queue.push(B00111100);
-  display_queue.push(B00011000);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
-  display_queue.push((byte)0);
   
   // Slide 5
-  display_queue.push(B00111100);
   display_queue.push(B00011000);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
+  display_queue.push((byte)0);
   display_queue.push(B00011000);
   display_queue.push(B00111100);
-  display_queue.push((byte)0);
+  display_queue.push(B00111100);
   
   // Slide 6
-  display_queue.push(B00011000);
+  display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
-  display_queue.push((byte)0);
+  display_queue.push(B00011000);
   
-  // Slide 0
+  // Slide 7
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -218,7 +230,7 @@ void loadLeftToQueue(){
   display_queue.push(B00011000);  
   display_queue.push((byte)0);
   
-  // Slide 1
+  // Slide 8
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
@@ -238,10 +250,10 @@ void signalStateMachine(){
     char input = Serial.read();
     switch(input) {
       case 'B':
-        brake_modifier = B10000001;
+        brake_modifier = BRAKE_ON_MODIFIER;
         break;
       case 'b':
-        brake_modifier = B00000000;
+        brake_modifier = BRAKE_OFF_MODIFIER;
         break;
       case 'L':
         current_state = LEFT;
@@ -264,22 +276,22 @@ void signalStateMachine(){
 void loop() { 
   // Check for inputs, then change states
   signalStateMachine();
-  Serial.print("Size of queue is ");
-  Serial.println(display_queue.count());
+//  Serial.print("Size of queue is ");
+//  Serial.println(display_queue.count());
   // Refill if empty
   if(display_queue.isEmpty()){
-    Serial.print("Queue is empty, ");
+//    Serial.print("Queue is empty, ");
     switch(current_state){
       case IDLE:
-        Serial.println("load idle slides...");
+//        Serial.println("load idle slides...");
         loadIdleToQueue();
         break;
       case LEFT:
-        Serial.println("load left slides...");
+//        Serial.println("load left slides...");
         loadLeftToQueue();
         break;
       case RIGHT:
-        Serial.println("load right slides...");
+//        Serial.println("load right slides...");
         loadRightToQueue();
         break;
     }
