@@ -23,29 +23,95 @@ const bool ShiftMatrixPWM_invertRowOutputs = 1; // if invertOutputs is 1, output
 
 #include <ShiftMatrixPWM.h>   // include ShiftMatrixPWM.h after setting the pins!
 
-unsigned char maxBrightness = 31;
-unsigned char pwmFrequency = 60;
-int numColumnRegisters = 1;
-int numRows=8;
+unsigned char max_brightness = 31;
+unsigned char pwm_frequency = 60;
+int num_column_registers = 1;
+int num_rows=7;
 
-int numColumns = numColumnRegisters*8;
-int numOutputs = numColumns*numRows;
+int num_columns = num_column_registers*8;
+int numOutputs = num_columns*num_rows;
 
 /* we always wait a bit between updates of the display */
-//unsigned long delaytime=500;
 const int DELAYVAL = 100;
+//
+//// State machine
+////SignalState current_state = IDLE;
+//
+//// Global LED Modifiers
+//byte brake_modifier = B11111111;
+//const byte BRAKE_ON_MODIFIER = B00000000;
+//const byte BRAKE_OFF_MODIFIER = B11111111;
+//QueueList <unsigned char> display_queue;
 
-// State machine
-enum SignalState {IDLE, LEFT, RIGHT};
-SignalState current_state = IDLE;
+// Gamma LUT function (gamma = 1/5)
+// negative values mean complementary brightness
+char gammaLUT(unsigned char brightness){
+  static const unsigned char lookup[32] = {
+     0,  5,  8, 10, 12, 14, 15, 17, 18, 19,
+    20, 21, 21, 22, 23, 24, 24, 25, 26, 26,
+    27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 
+    32, 32
+  };
+  if(brightness >=0)
+    return lookup[brightness];
+  else // complementary colours
+    return lookup[32 + brightness];
+}// end Gamma LUT
 
-// Global LED Modifiers
-byte brake_modifier = B11111111;
-const byte BRAKE_ON_MODIFIER = B00000000;
-const byte BRAKE_OFF_MODIFIER = B11111111;
-int phase_number = 0;
-QueueList <byte> display_queue;
-//volatile byte display_buffer[8];
+const unsigned char IDLE_SLIDES[35][7] = {
+  // Slide 1
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  
+  // Slide 2
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 28, 24, 20, 24, 28, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  
+  // Slide 3
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 28, 24, 20, 24, 28, 32},
+  {28, 24, 20, 16, 20, 24, 28},
+  {32, 28, 24, 20, 24, 28, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  
+  // Slide 4
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 28, 24, 20, 24, 28, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  
+  // Slide 5
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 28, 24, 28, 32, 32},
+  {32, 32, 32, 28, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32},
+  {32, 32, 32, 32, 32, 32, 32}
+};// END IDLE SLIDES
+  
+//  {30, 28, 24, 16, 24, 28, 30},
+//  {28, 24, 16,  8, 16, 24, 28},
+//  {24, 16,  8,  4,  8, 16, 24},
+//  {16,  8,  4,  0,  4,  8, 16},
+//  {24, 16,  8,  4,  8, 16, 24},
+//  {28, 24, 16,  8, 16, 24, 28},
+//  {30, 28, 24, 16, 24, 28, 30}};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup  Setup  Setup  Setup  Setup  Setup  Setup  Setup  Setup  Setup  //////
@@ -60,24 +126,30 @@ void setup() {
   SPI.setBitOrder(LSBFIRST);
   // SPI_CLOCK_DIV2 is only a tiny bit faster in sending out the last byte. 
   // SPI transfer and calculations overlap for the other bytes.
-  SPI.setClockDivider(SPI_CLOCK_DIV2); 
+  SPI.setClockDivider(SPI_CLOCK_DIV4); 
   SPI.begin(); 
 
-  ShiftMatrixPWM.SetMatrixSize(numRows, numColumnRegisters);
-  ShiftMatrixPWM.Start(pwmFrequency,maxBrightness);  
-  ShiftMatrixPWM.SetAll(maxBrightness+1);
+  ShiftMatrixPWM.SetMatrixSize(num_rows, num_column_registers);
+  ShiftMatrixPWM.Start(pwm_frequency,max_brightness);  
+  ShiftMatrixPWM.SetAll(max_brightness+1);
   
-  current_state = IDLE;
+//  current_state = IDLE;
 } // end Setup
 
 void displaySlide(){ // Sends a slide to ShiftMatrixPWM buffer
-  byte popped_row;
-  for(int row = 0; row < 8; row++){
-    popped_row = display_queue.pop() ^ brake_modifier;
-    for(int col = 7; col >=0 ; col--){
-      ShiftMatrixPWM.SetOne(row,col, 
-      (popped_row >> col & B00000001)*(maxBrightness+1));
+  int row;
+  
+  // Set Row 1 first because of stupid bug (row 1 = row 0)
+  for(row = 1; row < num_rows; row++){
+    for(int col = 0; col < num_columns-1; col++){
+//      ShiftMatrixPWM.SetOne(row,col,gammaLUT(display_queue.pop()));
     }
+  }
+  
+  // Now display last row (row 0 = row 6)
+  row = 0;
+  for(int col = 0; col < num_columns-1; col++){
+//    ShiftMatrixPWM.SetOne(row,col,gammaLUT(display_queue.pop()));
   }
 
 }// end displaySlide
@@ -90,14 +162,13 @@ void flushDisplayQueue(){
 }
 
 void loadIdleToQueue() {
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
-  display_queue.push(B00011000);
-  display_queue.push(B00111100);
-  display_queue.push(B00111100);
-  display_queue.push(B00011000);  
-  display_queue.push((byte)0);
-  display_queue.push((byte)0);
+  Serial.print("Loading idle slides... ");
+  for(int row=0; row<35; row++){
+    Serial.print("Loading slide ");
+    Serial.println(row);
+    for(int col=0; col<7; col++)
+      display_queue.push(IDLE_SLIDES[row][col]);
+  }
 }
 
 void loadRightToQueue(){
@@ -112,7 +183,6 @@ void loadRightToQueue(){
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);  
-  display_queue.push((byte)0);
   
   // Slide 2
   display_queue.push((byte)0);
@@ -122,7 +192,6 @@ void loadRightToQueue(){
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
-  display_queue.push(B00011000);
   
   // Slide 3
   display_queue.push(B00011000);
@@ -131,7 +200,6 @@ void loadRightToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
-  display_queue.push(B00111100);
   display_queue.push(B00111100);
   
   // Slide 4
@@ -142,7 +210,6 @@ void loadRightToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
-  display_queue.push(B00111100);
   
   // Slide 5
   display_queue.push(B00111100);
@@ -152,14 +219,12 @@ void loadRightToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push(B00011000);
   
   // Slide 6
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);
-  display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -172,7 +237,6 @@ void loadRightToQueue(){
   display_queue.push(B00011000);  
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
   
   // Slide 8
   display_queue.push((byte)0);
@@ -181,7 +245,6 @@ void loadRightToQueue(){
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);  
-  display_queue.push((byte)0);
   display_queue.push((byte)0);
 }
 
@@ -198,14 +261,12 @@ void loadLeftToQueue(){
   display_queue.push(B00011000);  
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push((byte)0);
   
   // Slide 2
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);
-  display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
@@ -218,7 +279,6 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push((byte)0);
-  display_queue.push(B00011000);
   
   // Slide 4
   display_queue.push(B00111100);
@@ -228,7 +288,6 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
-  display_queue.push(B00111100);
   
   // Slide 5
   display_queue.push(B00011000);
@@ -237,7 +296,6 @@ void loadLeftToQueue(){
   display_queue.push((byte)0);
   display_queue.push((byte)0);
   display_queue.push(B00011000);
-  display_queue.push(B00111100);
   display_queue.push(B00111100);
   
   // Slide 6
@@ -248,7 +306,6 @@ void loadLeftToQueue(){
   display_queue.push(B00011000);
   display_queue.push(B00111100);
   display_queue.push(B00111100);
-  display_queue.push(B00011000);
   
   // Slide 7
   display_queue.push((byte)0);
@@ -258,7 +315,6 @@ void loadLeftToQueue(){
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);  
-  display_queue.push((byte)0);
   
   // Slide 8
   display_queue.push((byte)0);
@@ -267,7 +323,6 @@ void loadLeftToQueue(){
   display_queue.push(B00111100);
   display_queue.push(B00111100);
   display_queue.push(B00011000);  
-  display_queue.push((byte)0);
   display_queue.push((byte)0);
 }
 
@@ -286,13 +341,13 @@ void signalStateMachine(){
         brake_modifier = BRAKE_OFF_MODIFIER;
         break;
       case 'L':
-        current_state = LEFT;
+//        current_state = LEFT;
         break;
       case 'R':
-        current_state = RIGHT;
+//        current_state = RIGHT;
         break;
       case 'C':
-        current_state = IDLE;
+//        current_state = IDLE;
         break;
     }
 //    Serial.print(", changed to ");
@@ -306,25 +361,25 @@ void signalStateMachine(){
 void loop() { 
   // Check for inputs, then change states
   signalStateMachine();
-//  Serial.print("Size of queue is ");
-//  Serial.println(display_queue.count());
+  Serial.print("Size of queue is ");
+  Serial.println(display_queue.count());
   // Refill if empty
   if(display_queue.isEmpty()){
-//    Serial.print("Queue is empty, ");
-    switch(current_state){
-      case IDLE:
+    Serial.print("Queue is empty, ");
+//    switch(current_state){
+//      case IDLE:
 //        Serial.println("load idle slides...");
-        loadIdleToQueue();
-        break;
-      case LEFT:
-//        Serial.println("load left slides...");
-        loadLeftToQueue();
-        break;
-      case RIGHT:
-//        Serial.println("load right slides...");
-        loadRightToQueue();
-        break;
-    }
+//        loadIdleToQueue();
+//        break;
+//      case LEFT:
+////        Serial.println("load left slides...");
+//        loadLeftToQueue();
+//        break;
+//      case RIGHT:
+////        Serial.println("load right slides...");
+//        loadRightToQueue();
+//        break;
+//    }
   }
   
   // push current slide to display buffer
